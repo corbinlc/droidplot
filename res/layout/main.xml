@@ -1,13 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ViewSwitcher xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/viewSwitcher"
     android:layout_width="fill_parent"
-    android:layout_height="fill_parent"
-    android:orientation="vertical" >
-
-    <TextView
-        android:id="@+id/myTextView"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="@string/hello" />
-
-</LinearLayout>
+    android:layout_height="fill_parent">
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    		android:layout_width="fill_parent"
+    		android:layout_height="fill_parent"
+    		android:orientation="vertical" >
+    		<TextView
+        		android:id="@+id/myTextView"
+        		android:layout_width="fill_parent"
+        		android:layout_height="wrap_content"
+        		android:text="@string/hello" />
+		</LinearLayout>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/plotLayout"
+            android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            >
+        </LinearLayout>
+</ViewSwitcher>
