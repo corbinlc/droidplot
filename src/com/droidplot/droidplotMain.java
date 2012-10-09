@@ -1,14 +1,11 @@
 package com.droidplot;
 
-//TODO: Add intent for measurement and setup only.  
-//TODO: Add intent for specifying script file
-//TODO: Make sure it exits properly when coming back around to it
-//TODO: Try out with octave
 //TODO: get icon file
-//TODO: release iy
+//TODO: release it
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -18,6 +15,8 @@ import android.app.ProgressDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
 import android.graphics.Bitmap;
@@ -59,6 +58,8 @@ public class droidplotMain extends Activity {
 	private LinearLayout mPlotLayout;
 	private boolean mReadFile = false;
 	private boolean mBackKeyPressed;
+	private boolean mMeasureAndExit;
+	private String mScriptFile;
 	/** Called when the activity is first created. */
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
@@ -70,63 +71,72 @@ public class droidplotMain extends Activity {
 		mPlotLayout = (LinearLayout)findViewById(R.id.plotLayout);
 		mSwitcher = (ViewSwitcher) findViewById(R.id.viewSwitcher);
 
+		onNewIntent(getIntent());
+
 		ViewTreeObserver viewTreeObserver = mSwitcher.getViewTreeObserver();
 		if (viewTreeObserver.isAlive()) {
 			viewTreeObserver.addOnGlobalLayoutListener(new OnGlobalLayoutListener() {
 				@Override
 				public void onGlobalLayout() {
-					mScreenHeight = mSwitcher.getHeight();
-					mScreenWidth = mSwitcher.getWidth();
-					if (mScreenWidth < mScreenHeight) {
-						mScreenHeight = mScreenWidth;
-					} else {
-						mScreenWidth = mScreenHeight;
-					}
-					// Converts 14 dip into its equivalent px
-					Resources r = getResources();
-					mTextHeight = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 14, r.getDisplayMetrics());
-					Paint paint = new Paint();
-					paint.setStyle(Paint.Style.STROKE);
-					paint.setTextSize(mTextHeight);
-					paint.setTypeface(Typeface.MONOSPACE);
-					mTextWidth = (int) paint.measureText("A");
-					mPd_ring = ProgressDialog.show(droidplotMain.this, "Unpacking Droidplot", "This may take a while (several minutes if this is the first time).",true);
-					mPd_ring.setCancelable(false);
-					Thread t = new Thread() {
-						public void run() {
-							try {
-								unpackAllFiles();
-								try {
-									BufferedWriter bw = new BufferedWriter(new FileWriter("/data/data/com.droidplot/bin/.gnuplot"));
-									bw.write("set term android size " + Integer.toString(mScreenWidth) + "," + Integer.toString(mScreenHeight) + " charsize " + Integer.toString(mTextWidth) + "," + Integer.toString(mTextHeight) + " ticsize " + Integer.toString(mTextWidth) + "," + Integer.toString(mTextWidth) + "\n");
-									bw.close();
-								} catch (Exception e) {
-								}
-								try {
-									Runtime runtime = Runtime.getRuntime(); 
-									Process process;
-									process = runtime.exec("chmod 0777 /data/data/com.droidplot/bin/.gnuplot");
-									try {
-										process.waitFor();
-									} catch (InterruptedException e) {
-										e.printStackTrace();
-									}
-								} catch (IOException e1) {
-									e1.printStackTrace();
-								}
-								kickItOff();
-							} catch (Exception e) {
-								Log.e("LongToast", "", e);
-							}
+					if (mReadFile == false) {
+						mScreenHeight = mSwitcher.getHeight();
+						mScreenWidth = mSwitcher.getWidth();
+						if (mScreenWidth < mScreenHeight) {
+							mScreenHeight = mScreenWidth;
+						} else {
+							mScreenWidth = mScreenHeight;
 						}
-					};
-					t.start();
+						// Converts 14 dip into its equivalent px
+						Resources r = getResources();
+						mTextHeight = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 14, r.getDisplayMetrics());
+						Paint paint = new Paint();
+						paint.setStyle(Paint.Style.STROKE);
+						paint.setTextSize(mTextHeight);
+						paint.setTypeface(Typeface.MONOSPACE);
+						mTextWidth = (int) paint.measureText("A");
+						mPd_ring = ProgressDialog.show(droidplotMain.this, "Unpacking Droidplot", "This may take a while (several minutes if this is the first time).",true);
+						mPd_ring.setCancelable(false);
+						Thread t = new Thread() {
+							public void run() {
+								try {
+									unpackAllFiles();
+									try {
+										BufferedWriter bw = new BufferedWriter(new FileWriter("/data/data/com.droidplot/bin/.gnuplot"));
+										bw.write("set term android size " + Integer.toString(mScreenWidth) + "," + Integer.toString(mScreenHeight) + " charsize " + Integer.toString(mTextWidth) + "," + Integer.toString(mTextHeight) + " ticsize " + Integer.toString(mTextWidth) + "," + Integer.toString(mTextWidth));
+										bw.close();
+									} catch (Exception e) {
+									}
+									try {
+										Runtime runtime = Runtime.getRuntime(); 
+										Process process;
+										process = runtime.exec("chmod 0777 /data/data/com.droidplot/bin/.gnuplot");
+										try {
+											process.waitFor();
+										} catch (InterruptedException e) {
+											e.printStackTrace();
+										}
+									} catch (IOException e1) {
+										e1.printStackTrace();
+									}
+									mPd_ring.dismiss();
+									if (mMeasureAndExit) {
+										setResult(0);
+										finish();
+									} else {
+										kickItOff();
+									}
+								} catch (Exception e) {
+									Log.e("LongToast", "", e);
+								}
+							}
+						};
+						t.start();
+					}
 
 					mSwitcher.getViewTreeObserver().removeGlobalOnLayoutListener(this);
 				}
 			});
-		} 
-		onNewIntent(getIntent());
+		}
 	}
 
 	@Override
@@ -134,21 +144,32 @@ public class droidplotMain extends Activity {
 		super.onNewIntent(intent);
 		setIntent(intent);
 
+		mMeasureAndExit = getIntent().hasExtra("measureAndExit");
+
+		mScriptFile = getIntent().getDataString();
+
 		String plotFile = getIntent().getStringExtra("plotfile");
 		if (plotFile != null) {
 			mReadFile = true;
+			mScreenHeight = getIntent().getIntExtra("ymax", 100);
+			mScreenWidth = getIntent().getIntExtra("xmax", 100);
+			mTextHeight = getIntent().getIntExtra("v_char", 10);
+			mTextWidth = getIntent().getIntExtra("h_char", 10);
 			processFile(plotFile);
 		}
 
 	}
 
 	private void kickItOff() {
-		mPd_ring.dismiss();
 		// opens a new window and runs "echo 'Hi there!'"
 		// application must declare jackpal.androidterm.permission.RUN_SCRIPT in manifest
 		Intent i = new Intent("jackpal.androidterm.RUN_SCRIPT");
 		i.addCategory(Intent.CATEGORY_DEFAULT);
-		i.putExtra("jackpal.androidterm.iInitialCommand", "cd /data/data/com.droidplot/bin; ./gnuplot");
+		if (mScriptFile == null) {
+			mScriptFile = "";
+		}
+		//i.putExtra("jackpal.androidterm.iInitialCommand", "export GNUTERM='android size " + Integer.toString(mScreenWidth) + "," + Integer.toString(mScreenHeight) + " charsize " + Integer.toString(mTextWidth) + "," + Integer.toString(mTextHeight) + " ticsize " + Integer.toString(mTextWidth) + "," + Integer.toString(mTextWidth) + "'; /data/data/com.droidplot/bin/gnuplot " + mScriptFile);
+		i.putExtra("jackpal.androidterm.iInitialCommand", "export HOME=/data/data/com.droidplot/bin; /data/data/com.droidplot/bin/gnuplot " + mScriptFile);
 		try {
 			startActivity(i);
 		} catch (ActivityNotFoundException e) {
@@ -181,67 +202,103 @@ public class droidplotMain extends Activity {
 
 	private void unpackAllFiles() {
 
-		Runtime runtime = Runtime.getRuntime(); 
-		Process process;
+		String version;
+
 		try {
-			process = runtime.exec("chmod 0755 /data/data/com.droidplot");
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
+			PackageInfo pi = getPackageManager().getPackageInfo("com.addi", 0);
+			version = pi.versionName;     // this is the line Eclipse complains
 		}
-		try {
-			process = runtime.exec("mkdir /data/data/com.droidplot/bin");
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
+		catch (PackageManager.NameNotFoundException e) {
+			// eat error, for testing
+			version = "?";
 		}
-		try {
-			process = runtime.exec("chmod 0755 /data/data/com.droidplot/bin");
+
+		File versionFile = new File("/data/data/com.droidplot/unzippedFiles/version");
+		if (versionFile.exists()==false) {
+
+			Runtime runtime = Runtime.getRuntime(); 
+			Process process;
 			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+				process = runtime.exec("chmod 0755 /data/data/com.droidplot");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
 			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
+			File unzipList = new File("/data/data/com.droidplot/unzippedFiles/");
+			if (unzipList.exists()==false) { 
+				unzipList.mkdir();
+			}
+			try {
+				process = runtime.exec("mkdir /data/data/com.droidplot/bin");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			try {
+				process = runtime.exec("rm -f /data/data/com.droidplot/bin/*");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			try {
+				process = runtime.exec("chmod 0755 /data/data/com.droidplot/bin");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			try {
+				process = runtime.exec("mkdir /data/data/com.droidplot/tmp");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			try {
+				process = runtime.exec("chmod 0777 /data/data/com.droidplot/tmp");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			try {
+				process = runtime.exec("ln -s /data/data/com.droidplot/lib/lib__bin__gnuplot.so /data/data/com.droidplot/bin/gnuplot");
+				try {
+					process.waitFor();
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+
 		}
+
 		try {
-			process = runtime.exec("mkdir /data/data/com.droidplot/tmp");
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			process = runtime.exec("chmod 0777 /data/data/com.droidplot/tmp");
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			process = runtime.exec("ln -s /data/data/com.droidplot/lib/lib__bin__gnuplot.so /data/data/com.droidplot/bin/gnuplot");
-			try {
-				process.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-		} catch (IOException e1) {
-			e1.printStackTrace();
+			versionFile.createNewFile();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 	}
 
@@ -410,6 +467,8 @@ public class droidplotMain extends Activity {
 					} else if (termCommand[1].equals("text")) {
 						mDemoview.invalidate();
 						mSwitcher.setDisplayedChild(1);
+						mPlotLayout.invalidate();
+						mSwitcher.invalidate();
 					}
 				}
 				line = bufRead.readLine();
@@ -421,6 +480,9 @@ public class droidplotMain extends Activity {
 			// If another exception is generated, print a stack trace
 			e.printStackTrace();
 		}
+
+		File f1 = new File(fileName);
+		boolean success = f1.delete();
 
 	}
 
@@ -454,7 +516,7 @@ public class droidplotMain extends Activity {
 			}
 			mBackKeyPressed = false;
 		}
-		moveTaskToBack(true);
+		finish();
 		return true;
 	}
 
@@ -462,6 +524,22 @@ public class droidplotMain extends Activity {
 	public void onPause() {
 		super.onPause();
 		mBackKeyPressed = false;
+		File directory = new File("/data/data/com.droidplot/tmp");
+
+		// Get all files in directory
+		if (directory.exists()) {
+			File[] files = directory.listFiles();
+			for (File file : files)
+			{
+				// Delete each file
+				if (!file.delete())
+				{
+					// Failed to delete file
+					System.out.println("Failed to delete "+file);
+				}
+			}
+		}
+		finish();
 	}
 
 }

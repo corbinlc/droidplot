@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.droidplot"
     android:sharedUserId="com.octave.sharedid"
+    android:installLocation="auto"
     android:versionCode="1"        
     android:versionName="0.0.1">      
     <supports-screens android:resizeable="true"
