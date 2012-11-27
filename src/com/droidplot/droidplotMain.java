@@ -90,24 +90,6 @@ public class droidplotMain extends Activity {
 								try {
 									unpackAllFiles();
 									try {
-										BufferedWriter bw = new BufferedWriter(new FileWriter("/data/data/com.droidplot/bin/droidplot"));
-										bw.write("#!/system/bin/sh\numask 000;\nexec /data/data/com.droidplot/mylib/ld-linux.so.3 --library-path /data/data/com.droidplot/mylib /data/data/com.droidplot/bin/gnuplot \"$@\"");
-										bw.close();
-									} catch (Exception e) {
-									}
-									try {
-										Runtime runtime = Runtime.getRuntime(); 
-										Process process;
-										process = runtime.exec("chmod 0777 /data/data/com.droidplot/bin/droidplot");
-										try {
-											process.waitFor();
-										} catch (InterruptedException e) {
-											e.printStackTrace();
-										}
-									} catch (IOException e1) {
-										e1.printStackTrace();
-									}
-									try {
 										File rcFile = new File("/data/data/com.droidplot/share/gnuplot/4.6/gnuplotrc");
 										if (rcFile.exists()) {
 											rcFile.delete();
@@ -325,7 +307,7 @@ public class droidplotMain extends Activity {
 						String newFileName = splitStr[2];  //build up correct filename
 						for(int i=3; i < splitStr.length ; i++) {
 							newFileName = newFileName + "." + splitStr[i];
-						}
+						} 
 						try {
 							process = runtime.exec("ln -s /data/data/com.droidplot/lib/" + fileName + " /data/data/com.droidplot/"+splitStr[1]+"/"+newFileName);
 							try {
@@ -337,23 +319,7 @@ public class droidplotMain extends Activity {
 							e1.printStackTrace();
 						}
 					} else if (fileName.startsWith("libzip")) {
-						boolean alreadyUnpacked = false;
-						File[] unzipnames = unzipList.listFiles(); 
-						for (File tmpUnzipName: unzipnames) {
-							String unzipName = tmpUnzipName.getName();
-							if (unzipName.equalsIgnoreCase(fileName)) {
-								alreadyUnpacked = true;
-							}
-						}
-						if (alreadyUnpacked == false) {
-							unzipFile(fileName);
-							File tmpFile = new File("/data/data/com.droidplot/unzippedFiles/" + fileName);
-							try {
-								tmpFile.createNewFile();
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-						}
+						unzipFile(fileName);
 					}
 				}
 			}
