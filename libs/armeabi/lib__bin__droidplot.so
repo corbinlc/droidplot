@@ -1,3 +1,4 @@
 #!/system/bin/sh
 umask 000;
-exec /data/data/com.droidplot/mylib/ld-linux.so.3 --library-path /data/data/com.droidplot/mylib /data/data/com.droidplot/bin/gnuplot "$@"
+export HOME=/data/data/com.droidplot/bin; 
+exec /data/data/com.droidplot/bin/gnuplot "$@"

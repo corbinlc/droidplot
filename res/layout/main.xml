@@ -13,4 +13,11 @@
         		android:layout_height="wrap_content"
         		android:text="@string/hello" />
 		</LinearLayout>
+        <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+            android:id="@+id/plotLayout"
+            android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            >
+        </LinearLayout>
 </ViewSwitcher>
