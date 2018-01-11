@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">O Droidplot está iniciando pelo Android Terminal Emulator</string>
+    <string name="app_name">droidplot</string>
+
+</resources>
